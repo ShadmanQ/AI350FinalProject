@@ -48,9 +48,10 @@ class snake(object):
         self.dirnx = 0
         self.dirny = 1
         self.mind = mind
+        self.state_triple = [0,0,0]
 
     def move(self):
-
+        print(self.state_triple)
         move = self.mind.get_move(self)
 
         if move == 'LEFT':
@@ -123,6 +124,9 @@ class snake(object):
             else:
                 c.draw(surface)
 
+    def update_state(self,new_state):
+        self.state_triple = new_state
+
 
 def drawGrid(w, rows, surface):
     sizeBtwn = w // rows
@@ -171,6 +175,63 @@ def message_box(subject, content):
     except:
         pass
 
+def update_state(snake, snack):
+    triple = [0,0,0]
+    head = snake.body[0]
+    if snake.dirnx == 1:
+        if head.pos[0] == head.rows - 1:
+            triple[1] = -1
+        if head.pos[1] == 0:
+            triple[0] = -1
+        if head.pos[1] == head.rows -1:
+            triple[2] = -1
+        if snack.pos == (head.pos[0] + 1, head.pos[1]):
+            triple[1] = 1
+        if snack.pos == (head.pos[0], head.pos[1] - 1):
+            triple[0] = 1
+        if snack.pos == (head.pos[0], head.pos[1] + 1):
+            triple[2] = 1
+    elif snake.dirnx == -1:
+        if head.pos[0] == 0:
+            triple[1] = -1
+        if head.pos[1] == 0:
+            triple[2] = -1
+        if head.pos[1] == head.rows -1:
+            triple[0] = -1
+        if snack.pos == (head.pos[0] - 1, head.pos[1]):
+            triple[1] = 1
+        if snack.pos == (head.pos[0], head.pos[1] - 1):
+            triple[2] = 1
+        if snack.pos == (head.pos[0], head.pos[1] + 1):
+            triple[0] = 1
+    elif snake.dirny == 1:
+        if head.pos[1] == head.rows - 1:
+            triple[1] = -1
+        if head.pos[0] == 0:
+            triple[2] = -1
+        if head.pos[0] == head.rows - 1:
+            triple[0] = - 1
+        if snack.pos == (head.pos[0], head.pos[1] + 1):
+            triple[1] = 1
+        if snack.pos == (head.pos[0] - 1, head.pos[1]):
+            triple[2] = 1
+        if snack.pos == (head.pos[0] + 1, head.pos[1]):
+            triple[0] = 1
+    elif snake.dirny == -1:
+        if head.pos[1] == 0:
+            triple[1] = -1
+        if head.pos[0] == 0:
+            triple[0] = -1
+        if head.pos[0] == head.rows - 1:
+            triple[2] = - 1
+        if snack.pos == (head.pos[0], head.pos[1] - 1):
+            triple[1] = 1
+        if snack.pos == (head.pos[0] - 1, head.pos[1]):
+            triple[0] = 1
+        if snack.pos == (head.pos[0] + 1, head.pos[1]):
+            triple[2] = 1
+    snake.update_state(triple)
+    
 
 def main():
     global width, rows, s, snack
@@ -188,9 +249,8 @@ def main():
     while flag:
         pygame.time.delay(50)
         clock.tick(10)
-        print('moving')
         s.move()
-        print('moved')
+        update_state(s,snack)
         if s.body[0].pos == snack.pos:
             s.addCube()
             snack = cube(randomSnack(rows, s), color=(0, 255, 0))
