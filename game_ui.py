@@ -2,6 +2,7 @@ import math
 import random
 import pygame
 from AIs import BasicAI
+from AIs import Human
 import tkinter as tk
 from tkinter import messagebox
 
@@ -177,7 +178,8 @@ def main():
     rows = 20
     win = pygame.display.set_mode((width, width))
     rand = BasicAI.BasicAI()
-    s = snake((255, 0, 0), (10, 10), rand)
+    human = Human.Human()
+    s = snake((255, 0, 0), (10, 10), human)
     snack = cube(randomSnack(rows, s), color=(0, 255, 0))
     flag = True
 
