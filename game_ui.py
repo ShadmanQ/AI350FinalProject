@@ -1,6 +1,7 @@
 import math
 import random
 import pygame
+from AIs import BasicAI
 import tkinter as tk
 from tkinter import messagebox
 
@@ -38,41 +39,38 @@ class cube(object):
 class snake(object):
     body = []
     turns = {}
-
-    def __init__(self, color, pos):
+    
+    def __init__(self, color, pos, mind):
         self.color = color
         self.head = cube(pos)
         self.body.append(self.head)
         self.dirnx = 0
         self.dirny = 1
+        self.mind = mind
 
     def move(self):
-        for event in pygame.event.get():
-            if event.type == pygame.QUIT:
-                pygame.quit()
 
-            keys = pygame.key.get_pressed()
+        move = self.mind.get_move(self)
 
-            for key in keys:
-                if keys[pygame.K_LEFT]:
-                    self.dirnx = -1
-                    self.dirny = 0
-                    self.turns[self.head.pos[:]] = [self.dirnx, self.dirny]
+        if move == 'LEFT':
+            self.dirnx = -1
+            self.dirny = 0
+            self.turns[self.head.pos[:]] = [self.dirnx, self.dirny]
 
-                elif keys[pygame.K_RIGHT]:
-                    self.dirnx = 1
-                    self.dirny = 0
-                    self.turns[self.head.pos[:]] = [self.dirnx, self.dirny]
+        elif move == 'RIGHT':
+            self.dirnx = 1
+            self.dirny = 0
+            self.turns[self.head.pos[:]] = [self.dirnx, self.dirny]
 
-                elif keys[pygame.K_UP]:
-                    self.dirnx = 0
-                    self.dirny = -1
-                    self.turns[self.head.pos[:]] = [self.dirnx, self.dirny]
+        elif move == 'UP':
+            self.dirnx = 0
+            self.dirny = -1
+            self.turns[self.head.pos[:]] = [self.dirnx, self.dirny]
 
-                elif keys[pygame.K_DOWN]:
-                    self.dirnx = 0
-                    self.dirny = 1
-                    self.turns[self.head.pos[:]] = [self.dirnx, self.dirny]
+        elif move == 'DOWN':
+            self.dirnx = 0
+            self.dirny = 1
+            self.turns[self.head.pos[:]] = [self.dirnx, self.dirny]
 
         for i, c in enumerate(self.body):
             p = c.pos[:]
@@ -178,7 +176,8 @@ def main():
     width = 500
     rows = 20
     win = pygame.display.set_mode((width, width))
-    s = snake((255, 0, 0), (10, 10))
+    rand = BasicAI.BasicAI()
+    s = snake((255, 0, 0), (10, 10), rand)
     snack = cube(randomSnack(rows, s), color=(0, 255, 0))
     flag = True
 
@@ -187,7 +186,9 @@ def main():
     while flag:
         pygame.time.delay(50)
         clock.tick(10)
+        print('moving')
         s.move()
+        print('moved')
         if s.body[0].pos == snack.pos:
             s.addCube()
             snack = cube(randomSnack(rows, s), color=(0, 255, 0))
