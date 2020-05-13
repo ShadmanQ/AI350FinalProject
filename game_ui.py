@@ -8,14 +8,15 @@ from tkinter import messagebox
 
 
 class cube(object):
-    rows = 20
+    rows = 10
     w = 500
 
-    def __init__(self, start, dirnx=1, dirny=0, color=(255, 0, 0)):
+    def __init__(self, start, color=(255, 0, 0), dirnx=1, dirny=0):
         self.pos = start
         self.dirnx = 1
         self.dirny = 0
         self.color = color
+        self.points = 1
 
     def move(self, dirnx, dirny):
         self.dirnx = dirnx
@@ -37,18 +38,28 @@ class cube(object):
             pygame.draw.circle(surface, (0, 0, 0), circleMiddle2, radius)
 
 
+class fruit(cube):
+    def __init__(self, start, params):
+        cube.__init__(self, start, color=params[1])
+        self.score = params[0]
+
+    def hi(self):
+        print("hi")
+
+
 class snake(object):
     body = []
     turns = {}
-    
+
     def __init__(self, color, pos, mind):
         self.color = color
-        self.head = cube(pos)
+        self.head = cube(pos, color)
         self.body.append(self.head)
         self.dirnx = 0
         self.dirny = 1
         self.mind = mind
-        self.state_triple = [0,0,0]
+        self.state_triple = [0, 0, 0]
+        self.score = 0
 
     def move(self):
         print(self.state_triple)
@@ -94,25 +105,31 @@ class snake(object):
                     c.move(c.dirnx, c.dirny)
 
     def reset(self, pos):
-        self.head = cube(pos)
+        self.head = cube(pos, (255, 0, 0))
         self.body = []
         self.body.append(self.head)
         self.turns = {}
         self.dirnx = 0
         self.dirny = 1
+        self.score = 0
 
-    def addCube(self):
+    def growSnake(self, score):
+        self.score += score
         tail = self.body[-1]
         dx, dy = tail.dirnx, tail.dirny
 
         if dx == 1 and dy == 0:
-            self.body.append(cube((tail.pos[0] - 1, tail.pos[1])))
+            new = cube((tail.pos[0] - 1, tail.pos[1]), color=self.color)
+            self.body.append(new)
         elif dx == -1 and dy == 0:
-            self.body.append(cube((tail.pos[0] + 1, tail.pos[1])))
+            new = cube((tail.pos[0] + 1, tail.pos[1]), color=self.color)
+            self.body.append(new)
         elif dx == 0 and dy == 1:
-            self.body.append(cube((tail.pos[0], tail.pos[1] - 1)))
+            new = cube((tail.pos[0], tail.pos[1] - 1), color=self.color)
+            self.body.append(new)
         elif dx == 0 and dy == -1:
-            self.body.append(cube((tail.pos[0], tail.pos[1] + 1)))
+            new = cube((tail.pos[0], tail.pos[1] + 1), self.color)
+            self.body.append(new)
 
         self.body[-1].dirnx = dx
         self.body[-1].dirny = dy
@@ -124,7 +141,7 @@ class snake(object):
             else:
                 c.draw(surface)
 
-    def update_state(self,new_state):
+    def update_state(self, new_state):
         self.state_triple = new_state
 
 
@@ -141,10 +158,10 @@ def drawGrid(w, rows, surface):
         pygame.draw.line(surface, (255, 255, 255), (0, y), (w, y))
 
 
-def redrawWindow(surface):
-    global rows, width, s, snack
+def redrawWindow(surface, player, snack):
+    global rows, width
     surface.fill((0, 0, 0))
-    s.draw(surface)
+    player.draw(surface)
     snack.draw(surface)
     drawGrid(width, rows, surface)
     pygame.display.update()
@@ -161,7 +178,6 @@ def randomSnack(rows, item):
             continue
         else:
             break
-
     return (x, y)
 
 
@@ -175,15 +191,16 @@ def message_box(subject, content):
     except:
         pass
 
+
 def update_state(snake, snack):
-    triple = [0,0,0]
+    triple = [0, 0, 0]
     head = snake.body[0]
     if snake.dirnx == 1:
         if head.pos[0] == head.rows - 1:
             triple[1] = -1
         if head.pos[1] == 0:
             triple[0] = -1
-        if head.pos[1] == head.rows -1:
+        if head.pos[1] == head.rows - 1:
             triple[2] = -1
         if snack.pos == (head.pos[0] + 1, head.pos[1]):
             triple[1] = 1
@@ -196,7 +213,7 @@ def update_state(snake, snack):
             triple[1] = -1
         if head.pos[1] == 0:
             triple[2] = -1
-        if head.pos[1] == head.rows -1:
+        if head.pos[1] == head.rows - 1:
             triple[0] = -1
         if snack.pos == (head.pos[0] - 1, head.pos[1]):
             triple[1] = 1
@@ -231,17 +248,19 @@ def update_state(snake, snack):
         if snack.pos == (head.pos[0] + 1, head.pos[1]):
             triple[2] = 1
     snake.update_state(triple)
-    
+
 
 def main():
-    global width, rows, s, snack
+    global width, rows
+    fruits = [[1, (255, 0, 0)], [2, (0, 0, 255)], [3, (77, 77, 77)]]
     width = 500
-    rows = 20
+    rows = 10
     win = pygame.display.set_mode((width, width))
     rand = BasicAI.BasicAI()
     human = Human.Human()
-    s = snake((255, 0, 0), (10, 10), human)
-    snack = cube(randomSnack(rows, s), color=(0, 255, 0))
+    player = snake((0, 0, 255), (5, 5), human)
+    theFruit = fruit(randomSnack(rows, player), fruits[1])
+
     flag = True
 
     clock = pygame.time.Clock()
@@ -249,20 +268,21 @@ def main():
     while flag:
         pygame.time.delay(50)
         clock.tick(10)
-        s.move()
-        update_state(s,snack)
-        if s.body[0].pos == snack.pos:
-            s.addCube()
-            snack = cube(randomSnack(rows, s), color=(0, 255, 0))
+        player.move()
+        update_state(player, theFruit)
+        # if head of snake and fruit overlap, grow
+        if player.body[0].pos == theFruit.pos:
+            player.growSnake(theFruit.score)
+            theFruit = fruit(randomSnack(rows, player), fruits[2])
 
-        for x in range(len(s.body)):
-            if s.body[x].pos in list(map(lambda z: z.pos, s.body[x + 1:])):
-                print ('Score:', len(s.body))
+        for x in range(len(player.body)):
+            if player.body[x].pos in list(map(lambda z: z.pos, player.body[x + 1:])):
+                print('Score:', player.score)
                 message_box('HA', 'You lost, loser')
-                s.reset((10, 10))
+                player.reset((10, 10))
                 break
 
-        redrawWindow(win)
+        redrawWindow(win, player, theFruit)
 
     pass
 
