@@ -29,7 +29,7 @@ class QNet(nn.Module):
         self.linear2 = nn.Linear(hidden_size, output_size)
 
     def forward(self, x):
-        #x = self.linear1(x)
+        # x = self.linear1(x)
         x = F.relu(self.linear1(x))
         x = self.linear2(x)
         return x
@@ -75,10 +75,17 @@ class DQNAgent_train(object):
             snake.y_change == -20,
             snake.y_change == 20,
             # Raspberry location
-            snake.raspberryPosition[0] < snake.snakePosition[0],  # food left
-            snake.raspberryPosition[0] > snake.snakePosition[0],  # food right
-            snake.raspberryPosition[1] < snake.snakePosition[1],  # food up
-            snake.raspberryPosition[1] > snake.snakePosition[1]  # food down
+            # snake.raspberryPosition[0] < snake.snakePosition[0],  # food left
+            # snake.raspberryPosition[0] > snake.snakePosition[0],  # food right
+            # snake.raspberryPosition[1] < snake.snakePosition[1],  # food up
+            # snake.raspberryPosition[1] > snake.snakePosition[1],  # food down
+
+
+            snake.closestFruit[0] < snake.snakePosition[0],
+            snake.closestFruit[0] > snake.snakePosition[0],
+            snake.closestFruit[1] < snake.snakePosition[1],
+            snake.closestFruit[1] > snake.snakePosition[1]
+
         ]
 
         for i in range(len(state)):
