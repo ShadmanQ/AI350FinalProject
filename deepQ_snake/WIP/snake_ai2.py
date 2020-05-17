@@ -5,6 +5,7 @@ import random
 from pygame.locals import *
 import threading
 import numpy as np
+import math
 
 # COLORS
 # RED
@@ -22,17 +23,21 @@ whiteColour = pygame.Color(255, 255, 255)
 # GRAY
 greyColour = pygame.Color(150, 150, 150)
 LightGrey = pygame.Color(220, 220, 220)
+# YELLOW
+yellowColour = pygame.Color(255, 255, 0)
+blueColour = pygame.Color(0, 0, 255)
+purpleColour = pygame.Color(255, 0, 255)
 
 
 class game_ai:
 
-    def __init__(self, display_width=640, display_height=480):
+    def __init__(self, num, display_width=640, display_height=480):
         # Initailize pygame
 
         self.FPS = 40
         self.fpsClock = pygame.time.Clock()
 
-        self.numFruit = 2
+        self.numFruit = num
         self.closestFruit = []
 
         self.display_width = display_width
@@ -76,14 +81,15 @@ class game_ai:
         return score1
 
     def getClosestFruit(self):
-        closest = 100000000000000
-        point = []
+        closest = 100000000000000  # set to arbitrarily large
+        position = []
         for i in range(len(self.fruitPositions)):
-            dist = abs(self.snakePosition[0] - self.fruitPositions[i][0]) + \
-                abs(self.snakePosition[1] - self.fruitPositions[i][1])
+            dist = math.sqrt(abs(self.snakePosition[0] - self.fruitPositions[i][0])
+                             ** 2 + abs(self.snakePosition[1] - self.fruitPositions[i][1])**2)
             if dist < closest:
-                point = self.fruitPositions[i]
-        self.closestFruit = point
+                closest = dist
+                position = self.fruitPositions[i]
+        self.closestFruit = position
 
     # Snake and raspberry
     def play(self, playSurface, action):
@@ -137,7 +143,7 @@ class game_ai:
         pygame.draw.rect(self.playSurface, LightGrey, Rect(
             self.snakePosition[0], self.snakePosition[1], 20, 20))
         for fruit in self.fruitPositions:
-            pygame.draw.rect(self.playSurface, redColour, Rect(
+            pygame.draw.rect(self.playSurface, purpleColour, Rect(
                 fruit[0], fruit[1], 20, 20))
 #        pygame.draw.rect(self.playSurface, redColour, Rect(
 #            self.raspberryPosition[0], self.raspberryPosition[1], 20, 20))

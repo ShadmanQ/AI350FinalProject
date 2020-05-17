@@ -8,6 +8,7 @@ from torch.utils.data import DataLoader
 import random
 import os
 import pygame
+import sys
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -168,7 +169,7 @@ class DQNAgent_train(object):
         return final_move
 
 
-def train():
+def train(num):
     pygame.display.set_caption('Training!')
     # Load image and set icon
     image = pygame.image.load('snake.png')
@@ -183,7 +184,7 @@ def train():
     mean_plot = []
     record = 0
     agent = DQNAgent_train()
-    game = game_ai()
+    game = game_ai(num)
     while True:
         # get old state
         state_old = agent.get_state(game)
@@ -224,6 +225,8 @@ def train():
 if __name__ == '__main__':
     pygame.display.set_caption('Deep Q Snake!')
     image = pygame.image.load('snake.png')
+    args = sys.argv
+    num = int(args[1])
     pygame.display.set_icon(image)
     pygame.init()
-    train()
+    train(num)
