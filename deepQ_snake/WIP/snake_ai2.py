@@ -39,6 +39,8 @@ class game_ai:
 
         self.numFruit = num
         self.closestFruit = []
+       # rewards = [10, 20, 30]
+        self.colours = [redColour, blueColour, yellowColour]
 
         self.display_width = display_width
         self.display_height = display_height
@@ -55,11 +57,16 @@ class game_ai:
                               [self.snakePosition[0] - 20, self.snakePosition[1]],
                               [self.snakePosition[0] - 40, self.snakePosition[1]]]
 
-        self.fruitPositions = []
+        self.fruitPositions = []  # holds the fruit positions
+        self.fruitRewards = {}  # holds the reward for each fruit. key is reward, val is x y coord
+        # there's probably a better way to organize this but my brain is frazzled
 
+        # give each fruit it's own position on
         for i in range(self.numFruit):
-            self.fruitPositions.append([random.randint(
-                0, (self.display_width - 20) // 20) * 20, random.randint(0, (self.display_height - 20) // 20) * 20])
+            coord = [random.randint(
+                0, (self.display_width - 20) // 20) * 20, random.randint(0, (self.display_height - 20) // 20) * 20]
+            self.fruitPositions.append(coord)
+            self.fruitRewards[(i + 1) * 10] = coord
 
         self.getClosestFruit()
 
@@ -80,6 +87,7 @@ class game_ai:
         self.__init_game()
         return score1
 
+    # gets the Euclidean distance of each fruit relative to snakePosition
     def getClosestFruit(self):
         closest = 100000000000000  # set to arbitrarily large
         position = []
@@ -109,7 +117,10 @@ class game_ai:
         for fruit in self.fruitPositions:
             if fruit[0] == self.snakePosition[0] and self.snakePosition[1] == fruit[1]:
                 self.raspberrySpawned = 0
-                reward = 10
+                for key in self.fruitRewards.keys():
+                    if self.fruitRewards[key] == fruit:
+                        reward = key
+               # reward = 10
         # if self.snakePosition[0] == self.raspberryPosition[0] and self.snakePosition[1] == self.raspberryPosition[1]:
         #     self.raspberrySpawned=0
         #     reward=10
@@ -121,6 +132,7 @@ class game_ai:
                 x = random.randrange(0, (self.display_width - 20) // 20)
                 y = random.randrange(0, (self.display_height - 20) // 20)
                 self.fruitPositions[i] = [int(x * 20), int(y * 20)]
+                self.fruitRewards[i + 1 * 10] = [x, y]
             self.raspberrySpawned = 1
             self.score += 1
 
@@ -142,9 +154,9 @@ class game_ai:
 
         pygame.draw.rect(self.playSurface, LightGrey, Rect(
             self.snakePosition[0], self.snakePosition[1], 20, 20))
-        for fruit in self.fruitPositions:
-            pygame.draw.rect(self.playSurface, purpleColour, Rect(
-                fruit[0], fruit[1], 20, 20))
+        for i in range(len(self.fruitPositions)):
+            pygame.draw.rect(self.playSurface, self.colours[i], Rect(
+                self.fruitPositions[i][0], self.fruitPositions[i][1], 20, 20))
 #        pygame.draw.rect(self.playSurface, redColour, Rect(
 #            self.raspberryPosition[0], self.raspberryPosition[1], 20, 20))
         pygame.display.flip()
