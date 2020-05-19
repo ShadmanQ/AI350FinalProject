@@ -49,53 +49,6 @@ class DQNAgent_train(object):
         self.optimizer = optim.Adam(self.model.parameters(), lr=0.001)
         self.loss_fn = nn.MSELoss()
 
-    def get_state(self, snake):
-        state = [
-            # Snake location
-            (snake.x_change == 20 and snake.y_change == 0 and ((list(map(add, snake.snakeSegments[0], [20, 0])) in snake.snakeSegments) or snake.snakeSegments[0][0] + 20 >= (snake.display_width - 20))) or
-            (snake.x_change == -20 and snake.y_change == 0 and ((list(map(add, snake.snakeSegments[0], [-20, 0])) in snake.snakeSegments) or snake.snakeSegments[0][0] - 20 < 20)) or
-            (snake.x_change == 0 and snake.y_change == -20 and ((list(map(add, snake.snakeSegments[0], [0, -20])) in snake.snakeSegments) or snake.snakeSegments[0][-1] - 20 < 20)) or
-            (snake.x_change == 0 and snake.y_change == 20 and ((list(map(add, snake.snakeSegments[0], [
-             0, 20])) in snake.snakeSegments) or snake.snakeSegments[0][-1] + 20 >= (snake.display_height - 20))),
-
-            (snake.x_change == 0 and snake.y_change == -20 and ((list(map(add, snake.snakeSegments[0], [20, 0])) in snake.snakeSegments) or snake.snakeSegments[0][0] + 20 > (snake.display_width - 20))) or
-            (snake.x_change == 0 and snake.y_change == 20 and ((list(map(add, snake.snakeSegments[0], [-20, 0])) in snake.snakeSegments) or snake.snakeSegments[0][0] - 20 < 20)) or
-            (snake.x_change == -20 and snake.y_change == 0 and ((list(map(add, snake.snakeSegments[0], [0, -20])) in snake.snakeSegments) or snake.snakeSegments[0][-1] - 20 < 20)) or
-            (snake.x_change == 20 and snake.y_change == 0 and ((list(map(add, snake.snakeSegments[0], [
-             0, 20])) in snake.snakeSegments) or snake.snakeSegments[0][-1] + 20 >= (snake.display_height - 20))),
-
-            (snake.x_change == 0 and snake.y_change == 20 and ((list(map(add, snake.snakeSegments[0], [20, 0])) in snake.snakeSegments) or snake.snakeSegments[0][0] + 20 > (snake.display_width - 20))) or
-            (snake.x_change == 0 and snake.y_change == -20 and ((list(map(add, snake.snakeSegments[0], [-20, 0])) in snake.snakeSegments) or snake.snakeSegments[0][0] - 20 < 20)) or
-            (snake.x_change == 20 and snake.y_change == 0 and ((list(map(add, snake.snakeSegments[0], [0, -20])) in snake.snakeSegments) or snake.snakeSegments[0][-1] - 20 < 20)) or
-            (snake.x_change == -20 and snake.y_change == 0 and ((list(map(add, snake.snakeSegments[0], [
-             0, 20])) in snake.snakeSegments) or snake.snakeSegments[0][-1] + 20 >= (snake.display_height - 20))),
-
-            # Move direction
-            snake.x_change == -20,
-            snake.x_change == 20,
-            snake.y_change == -20,
-            snake.y_change == 20,
-            # Raspberry location
-            # snake.raspberryPosition[0] < snake.snakePosition[0],  # food left
-            # snake.raspberryPosition[0] > snake.snakePosition[0],  # food right
-            # snake.raspberryPosition[1] < snake.snakePosition[1],  # food up
-            # snake.raspberryPosition[1] > snake.snakePosition[1],  # food down
-
-
-            snake.closestFruit[0] < snake.snakePosition[0],
-            snake.closestFruit[0] > snake.snakePosition[0],
-            snake.closestFruit[1] < snake.snakePosition[1],
-            snake.closestFruit[1] > snake.snakePosition[1]
-
-        ]
-
-        for i in range(len(state)):
-            if state[i]:
-                state[i] = 1
-            else:
-                state[i] = 0
-
-        return np.asarray(state)
 
     def remember(self, state, action, reward, next_state, done):
         self.memory.append([state, action, reward, next_state, done])
@@ -169,7 +122,7 @@ class DQNAgent_train(object):
         return final_move
 
 
-def train(num):
+def train(num_fruit, num_snakes):
     pygame.display.set_caption('Training!')
     # Load image and set icon
     image = pygame.image.load('snake.png')
@@ -184,26 +137,32 @@ def train(num):
     mean_plot = []
     record = 0
     agent = DQNAgent_train()
-    game = game_ai(num)
+    game = game_ai(num_fruit, num_snakes)
     while True:
-        # get old state
-        state_old = agent.get_state(game)
+        old_states = []
+        final_moves = []
+        for snake in game.snakes:
+            # get old state
+            state_old = game.get_state(snake)
+            old_states.append(state_old)
 
-        final_move = agent.get_action(state_old)
+            final_moves.append(agent.get_action(state_old))
 
-        # perform new move and get new state
-        reward, done, score = game.frameStep(final_move)
-        state_new = agent.get_state(game)
+            # perform new move and get new state
+        rewards, dones, scores = game.frameStep(final_moves)
+        for i in range(len(game.snakes)):
+            state_new = game.get_state(game.snakes[i])
 
-        # train short memory base on the new action and state
-        agent.train_short_memory(state_old, final_move, reward, state_new, done)
+            # train short memory base on the new action and state
+            agent.train_short_memory(old_states[i], final_moves[i], rewards[i], state_new, dones[i])
 
-        # store the new data into a long term memory
-        agent.remember(state_old, final_move, reward, state_new, done)
+            # store the new data into a long term memory
+            agent.remember(old_states[i], final_moves[i], rewards[i], state_new, dones[i])
 
-        if done == True:
+        if not game.snakes:
             # One game is over, train on the memory and plot the result.
-            sc = game.reset()
+            scores = game.reset()
+            sc = max(scores)
             total_score += sc
             agent.train_long_memory(agent.memory)
             print('Game', agent.counter_games, '      Score:', sc)
@@ -226,7 +185,8 @@ if __name__ == '__main__':
     pygame.display.set_caption('Deep Q Snake!')
     image = pygame.image.load('snake.png')
     args = sys.argv
-    num = int(args[1])
+    num_fruit = int(args[1])
+    num_snakes = int(args[2])
     pygame.display.set_icon(image)
     pygame.init()
-    train(num)
+    train(num_fruit, num_snakes)
