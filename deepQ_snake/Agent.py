@@ -17,36 +17,38 @@ from collections import deque
 
 from snake_ai import game_ai
 
-random.seed(9001)
+#random.seed(9001)
 
-#NETWORK
+#NETWORK: input size = 11, hidden size = 256, output size = 3
 class QNet(nn.Module):
     def __init__(self, input_size, hidden_size, output_size):
         super().__init__()
         self.linear1 = nn.Linear(input_size, hidden_size)
         self.linear2 = nn.Linear(hidden_size, output_size)
     def forward(self, x):
-        #x = self.linear1(x)
         x = F.relu(self.linear1(x))
         x = self.linear2(x)
         return x
 
 class DQNAgent_train(object):
-
     def __init__(self):
         self.gamma = 0.9
         self.epsilon = 0
         self.counter_games = 0
+        #replay memory D
         self.memory = deque()
-        self.lr = 1e-4
+        #action-value function Q 
         self.model = QNet(11, 256, 3)
         self.model.train()
+
+        #https://arxiv.org/abs/1412.6980 Adam: A Method for Stochastic Optimization
         self.optimizer = optim.Adam(self.model.parameters(), lr=0.001)
+
         self.loss_fn = nn.MSELoss()
 
     def get_state(self, snake):
         state = [
-            # Snake location
+            # immediate danger for snake straight, right, or left
             (snake.x_change == 20 and snake.y_change == 0 and ((list(map(add, snake.snakeSegments[0], [20, 0])) in snake.snakeSegments) or snake.snakeSegments[0][0] + 20 >= (snake.display_width - 20))) or 
             (snake.x_change == -20 and snake.y_change == 0 and ((list(map(add, snake.snakeSegments[0], [-20, 0])) in snake.snakeSegments) or snake.snakeSegments[0][0] - 20 < 20)) or 
             (snake.x_change == 0 and snake.y_change == -20 and ((list(map(add, snake.snakeSegments[0], [0, -20])) in snake.snakeSegments) or snake.snakeSegments[0][-1] - 20 < 20)) or 
@@ -62,16 +64,17 @@ class DQNAgent_train(object):
             (snake.x_change == 20 and snake.y_change == 0 and ((list(map(add,snake.snakeSegments[0],[0,-20])) in snake.snakeSegments) or snake.snakeSegments[0][-1] - 20 < 20)) or 
             (snake.x_change == -20 and snake.y_change == 0 and ((list(map(add,snake.snakeSegments[0],[0,20])) in snake.snakeSegments) or snake.snakeSegments[0][-1] + 20 >= (snake.display_height-20))),
 
-            # Move direction
+            # direction snake is currently moving
             snake.x_change == -20, 
             snake.x_change == 20,  
             snake.y_change == -20,  
             snake.y_change == 20,
-            # Raspberry location 
-            snake.raspberryPosition[0] < snake.snakePosition[0],  # food left
-            snake.raspberryPosition[0] > snake.snakePosition[0],  # food right
-            snake.raspberryPosition[1] < snake.snakePosition[1],  # food up
-            snake.raspberryPosition[1] > snake.snakePosition[1]  # food down
+
+            # fruit location 
+            snake.fruitPosition[0] < snake.snakePosition[0],  # food left
+            snake.fruitPosition[0] > snake.snakePosition[0],  # food right
+            snake.fruitPosition[1] < snake.snakePosition[1],  # food up
+            snake.fruitPosition[1] > snake.snakePosition[1]  # food down
             ]
 
         for i in range(len(state)):
@@ -87,7 +90,7 @@ class DQNAgent_train(object):
         if len(self.memory) > 100000:
             self.memory.popleft()
 
-    def train_long_memory(self, memory):
+    def replay_memory(self, memory):
         self.counter_games += 1
         if len(memory) > 1000:
             minibatch = random.sample(memory, 1000)
@@ -100,7 +103,11 @@ class DQNAgent_train(object):
         reward = torch.tensor(reward, dtype=torch.float) # int
         next_state = torch.tensor(next_state, dtype=torch.float) #[True, ... , False]
         target = reward
-        target = reward + self.gamma * torch.max(self.model(next_state), dim=1)[0]
+        # target = reward + self.gamma * torch.max(self.model(next_state), dim=1)[0]
+        if not done:
+            target = reward + self.gamma * torch.max(self.model(next_state))
+
+        #optimize
         location = [[x] for x in torch.argmax(action, dim=1).numpy()]
         location = torch.tensor(location)
         pred = self.model(state).gather(1, location)#[action]
@@ -118,9 +125,12 @@ class DQNAgent_train(object):
 
         if not done:
             target = reward + self.gamma * torch.max(self.model(next_state))
+
+        #optimize
         pred = self.model(state)
         target_f = pred.clone()
         target_f[torch.argmax(action).item()] = target
+
         loss = self.loss_fn(target_f, pred)
         self.optimizer.zero_grad()
         loss.backward()
@@ -131,7 +141,7 @@ class DQNAgent_train(object):
         display.clear_output(wait=True)
         display.display(plt.gcf())
         plt.clf()
-        plt.title('Training...')
+        plt.title('Training Results')
         plt.xlabel('Number of Games')
         plt.ylabel('Score')
         plt.plot(score)
@@ -156,22 +166,39 @@ class DQNAgent_train(object):
 
 
 def train():
-    pygame.display.set_caption('Training!')
-    # Load image and set icon
-    image = pygame.image.load('snake.png')
-    pygame.display.set_icon(image)
-    model_folder_path = './model'
-    if not os.path.exists(model_folder_path):
-        os.makedirs(model_folder_path)
+    #will save the model for the game that gets the highest score
+    save_model = False
+
+    #have to set window caption in here lol idk why
+    pygame.display.set_caption('SmartSnake')
+
+    #make folder for saved models
+    if save_model:
+        if not os.path.exists('./model'):
+            os.makedirs('./model')
+
+    #setup for training
+
+    #Turn the interactive mode on for pyplot
     plt.ion()
-    pygame.init()
+
+    #Initialize plotting values
     score_plot = []
     total_score = 0
     mean_plot =[]
     record = 0
-    agent = DQNAgent_train()
-    game = game_ai()
+
+    #initialize agent and environment
+    agent = DQNAgent_train() #agent == snake
+    game = game_ai() #enviroment == game/board/emulator
+
+    #max number of games the agent will play while training
+    max_games = 200
+
     while True:
+        if agent.counter_games > max_games:
+            exit("Max number of games reached")
+
         #get old state
         state_old = agent.get_state(game)
         
@@ -181,7 +208,7 @@ def train():
         reward, done, score = game.frameStep(final_move)
         state_new = agent.get_state(game)
     
-        #train short memory base on the new action and state
+        #train short memory based on the new action and state
         agent.train_short_memory(state_old, final_move, reward, state_new, done)
         
         # store the new data into a long term memory
@@ -191,14 +218,21 @@ def train():
             # One game is over, train on the memory and plot the result.
             sc = game.reset()
             total_score += sc
-            agent.train_long_memory(agent.memory)
+            agent.replay_memory(agent.memory)
+
+            #print what number game the snake is on and what the score is for the game
             print('Game', agent.counter_games, '      Score:', sc)
+
+            #update record and save model if new high score 
+            #model from iteration w highest score saved as best_model.pth
             if sc > record:
                 record = sc
-                name = 'best_model.pth'.format(sc)
-                dir = os.path.join(model_folder_path, name)
-                torch.save(agent.model.state_dict(), dir)
+                if save_model:
+                    dir = os.path.join('./model', 'best_model.pth')
+                    torch.save(agent.model.state_dict(), dir)
+
             print('record: ', record)
+            #add plot points for current game: score and updated average
             score_plot.append(sc)
             mean = total_score / agent.counter_games
             mean_plot.append(mean)
@@ -209,9 +243,11 @@ def train():
 
 
 if __name__ == '__main__':
-    pygame.display.set_caption('Deep Q Snake!')
+    #load game icon and initialize pygame
     image = pygame.image.load('snake.png')
     pygame.display.set_icon(image)
     pygame.init()
+
+    #call training function!!!!
     train()
 

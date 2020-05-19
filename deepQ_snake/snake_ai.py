@@ -6,35 +6,36 @@ from pygame.locals import *
 import threading
 import numpy as np
 
-#COLORS
-# RED
-redColour = pygame.Color(200,0,0)
-brightRedColour = pygame.Color(255,0,0)
-# GREEN
-brightGreenColour = pygame.Color(0,255,0)
-greenColour = pygame.Color(0,200,0)
-brightGreenColour1 = (150, 255, 150)
-darkGreenColour1 = (0, 155, 0)
-# BLACK
-blackColour = pygame.Color(0,0,0)
-# WHITE
-whiteColour = pygame.Color(255,255,255)
-# GRAY
-greyColour = pygame.Color(150,150,150)
-LightGrey = pygame.Color(220,220,220)
+#COLORS :: RGB VALUES
+
+# fruit color
+fruitColor = (255, 147, 59) #pink
+
+# primary snake color
+snakeColor1 = (70, 74, 224)
+#secondary snake color
+snakeColor2 = (143, 145, 247)
+# snake head color
+snakeHeadColor = (220,220,220) #light gray
+
+# background color
+backgroundColor = (0,0,0) #black
 
 
+#enviromenment class
 class game_ai:
-
     def __init__(self, display_width=640, display_height=480):
+
         # Initailize pygame
         
+        # clock and framerate
         self.FPS = 40
         self.fpsClock = pygame.time.Clock()
 
         self.display_width = display_width
         self.display_height = display_height
-        self.playSurface = pygame.display.set_mode((self.display_width, self.display_height))
+        self.board = pygame.display.set_mode((self.display_width, self.display_height))
+
         self.__init_game()
 
     def __init_game(self):
@@ -47,15 +48,18 @@ class game_ai:
                         [self.snakePosition[0]-20, self.snakePosition[1]], 
                         [self.snakePosition[0]-40, self.snakePosition[1]]]
 
-        self.raspberryPosition = [random.randint(0, (self.display_width-20)//20)*20, random.randint(0, (self.display_height-20)//20)*20]
-        self.raspberrySpawned = 1
+        self.fruitPosition = [random.randint(0, (self.display_width-20)//20)*20, random.randint(0, (self.display_height-20)//20)*20]
+        #
+        self.fruitSpawned = 1
+
+        #initially snake is moving straight
         self.action = [1, 0, 0] # [straight, right, left]
         self.score = 0
         self.episode = 0
 
     def frameStep(self, action):
         self.action = action
-        reward, done, score = self.play(self.playSurface, self.action)
+        reward, done, score = self.play(self.board, self.action)
         return reward, done, score
 
     def reset(self):
@@ -63,8 +67,8 @@ class game_ai:
         self.__init_game()
         return score1
 
-    # Snake and raspberry
-    def play(self, playSurface, action):
+    # Snake and fruit
+    def play(self, board, action):
         self.episode += 1
         for event in pygame.event.get():
             if event.type == QUIT:
@@ -77,27 +81,32 @@ class game_ai:
         self.move(action)
         reward = 0
         self.snakeSegments.insert(0, list(self.snakePosition))
-        if self.snakePosition[0] == self.raspberryPosition[0] and self.snakePosition[1] == self.raspberryPosition[1]:
-            self.raspberrySpawned = 0
+        if self.snakePosition[0] == self.fruitPosition[0] and self.snakePosition[1] == self.fruitPosition[1]:
+            self.fruitSpawned = 0
             reward = 10
         else:
             self.snakeSegments.pop()
 
 
-        if self.raspberrySpawned == 0:
+        if self.fruitSpawned == 0:
             x = random.randrange(0, (self.display_width-20)//20)
             y = random.randrange(0, (self.display_height-20)//20)
-            self.raspberryPosition = [int(x*20), int(y*20)]
-            self.raspberrySpawned = 1
+            self.fruitPosition = [int(x*20), int(y*20)]
+            self.fruitSpawned = 1
             self.score += 1
-        # refresh frame
-        playSurface.fill(blackColour)
-        for position in self.snakeSegments[1:]:
-            pygame.draw.rect(self.playSurface, darkGreenColour1, Rect(position[0], position[1], 20, 20))
-            pygame.draw.rect(self.playSurface, brightGreenColour1, Rect(position[0]+4, position[1]+4, 12, 12))
 
-        pygame.draw.rect(self.playSurface, LightGrey, Rect(self.snakePosition[0], self.snakePosition[1], 20, 20))
-        pygame.draw.rect(self.playSurface, redColour, Rect(self.raspberryPosition[0], self.raspberryPosition[1], 20, 20))
+        #REFRESH FRAME
+
+        #draw board
+        board.fill(backgroundColor)
+
+        #draw snake body
+        for position in self.snakeSegments[1:]:
+            pygame.draw.rect(self.board, snakeColor2, Rect(position[0], position[1], 20, 20))
+            pygame.draw.rect(self.board, snakeColor1, Rect(position[0]+4, position[1]+4, 12, 12))
+
+        pygame.draw.rect(self.board, snakeHeadColor, Rect(self.snakePosition[0], self.snakePosition[1], 20, 20))
+        pygame.draw.rect(self.board, fruitColor, Rect(self.fruitPosition[0], self.fruitPosition[1], 20, 20))
         pygame.display.flip()
 
         done = False
@@ -151,3 +160,5 @@ class game_ai:
         self.x_change, self.y_change = move_array  
         self.snakePosition[0] += self.x_change
         self.snakePosition[1] += self.y_change
+
+
