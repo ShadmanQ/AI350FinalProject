@@ -193,9 +193,9 @@ class game_ai:
             rewards.append(reward)
             dones.append(done)
             scores.append(snake.score)
-            for snake in dead:
-                self.final_scores.append(snake.score)
-                self.snakes.remove(snake)
+        for snake in set(dead):
+            self.final_scores.append(snake.score)
+            self.snakes.remove(snake)
 
         self.fpsClock.tick(self.FPS)
 
